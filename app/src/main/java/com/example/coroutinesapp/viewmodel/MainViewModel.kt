@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -15,11 +16,12 @@ import kotlinx.coroutines.launch
  * Anida las subrutinas del contador que pueden estar dentro de funciones suspend
  * Los dos contadores deberán estar sincronizados y se ejecutará el segundo al terminar la ejecución del primero.
  * Agrega un tercer botón que pueda cancelar los dos procesos de los contadores en cualquier instante.
- * Clases y recursos necesarios
- * Ocupa nuevamente la aplicación de Corrutinas.
  */
 
-class MainViewModel : ViewModel() {
+class MainViewModel(
+    initialCount: Int = 0,
+    initialResult: String = ""
+) : ViewModel() {
 
     var resultState by mutableStateOf("")
         private set
@@ -27,35 +29,57 @@ class MainViewModel : ViewModel() {
     var countTime by mutableIntStateOf(0)
         private set
 
+    var countTime_2 by mutableIntStateOf(0)
+            private set
+
+    var btnCancelEnable by mutableStateOf(false)
+        private set
+
     private var oneCount by mutableStateOf(false)
 
-    fun fetchData(){
+    private var job1: Job? = null
+    private var job2: Job? = null
 
-        val job1 = viewModelScope.launch {
-            for (i in 1..5){
+    fun fetchData() {
+        // Cancela trabajos anteriores si existen
+        job1?.cancel()
+        job2?.cancel()
+        btnCancelEnable = true
+        countTime = 0
+        countTime_2 = 0
+        resultState = ""
+
+
+        // Lanza la primera corrutina para el contador
+        job1 = viewModelScope.launch {
+            for (i in 1..5) {
                 delay(1000)
                 countTime = i
             }
-            oneCount = true
+
+            resultState = "Buscando..."
+
+            // Lanza la segunda corrutina para obtener datos de la "web"
+            job2 = viewModelScope.launch {
+                for (i in 1..5) {
+                    delay(1000)
+                    countTime_2 = i
+                }
+                resultState = "[Respuesta obtenida de la web]"
+            }
+
         }
 
-        val job2 = viewModelScope.launch {
-            delay(5000)
-            resultState = "Respuesta obtenida de la web"
-        }
 
-        if (oneCount){
-            job1.cancel()
-            oneCount = false
-        }
     }
 
-    // Esta función bloquea el hilo principal
-    fun bloqueoApp(){
-        Thread.sleep(5000)
-        resultState = "Respuesta obtenida de la web"
+    fun cancelJobs() {
+        job1?.cancel()
+        job2?.cancel()
+        btnCancelEnable = false
+        countTime = 0
+        countTime_2 = 0
+        resultState = "Operación cancelada"
+
     }
-
-
-
 }
